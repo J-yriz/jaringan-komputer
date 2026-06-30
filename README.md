@@ -1,6 +1,6 @@
-# Inventory System
+# Sistem Inventory
 
-Simple inventory management system built with Next.js, Prisma ORM, and MariaDB.
+Aplikasi manajemen inventory sederhana berbasis Next.js, Prisma ORM, dan MariaDB.
 
 ## Tech Stack
 
@@ -14,16 +14,33 @@ Simple inventory management system built with Next.js, Prisma ORM, and MariaDB.
 
 ## Prasyarat
 
-- Node.js 20+
+- Node.js 24+
 - MariaDB/MySQL database
 - PM2 (process manager)
-- Nginx (reverse proxy)
+- Apache2 (web server / reverse proxy)
 
 ---
 
-## 1. Setup Database (VM Server)
+## 1. Clone Project
 
-### Buat database dan user
+Clone project ke folder yang diinginkan. Disarankan di root folder untuk kemudahan:
+
+```bash
+# Cek lokasi sekarang
+pwd
+
+# Clone project (rekomendasi: /home/nama-root/inventory-server atau ~/nama-root/inventory-server)
+git clone <repository-url>
+cd /home/nama-root/inventory-server
+```
+
+> **Tips:** Gunakan `pwd` untuk memastikan kamu berada di folder yang benar.
+
+---
+
+## 2. Buat Database
+
+Database sudah dibuat otomatis oleh Prisma. Yang perlu dilakukan adalah membuat database kosong di MariaDB:
 
 ```bash
 # Login ke MariaDB
@@ -32,85 +49,61 @@ mysql -u root -p
 # Buat database
 CREATE DATABASE inventory_db;
 
-# Buat user
-CREATE USER 'inventory_user'@'localhost' IDENTIFIED BY 'inventory123';
-GRANT ALL PRIVILEGES ON inventory_db.* TO 'inventory_user'@'localhost';
-FLUSH PRIVILEGES;
-```
-
-### Atau via Docker
-
-```bash
-docker run -d \
-  --name inventory-mariadb \
-  -e MYSQL_ROOT_PASSWORD=root123 \
-  -e MYSQL_DATABASE=inventory_db \
-  -e MYSQL_USER=inventory_user \
-  -e MYSQL_PASSWORD=inventory123 \
-  -p 3306:3306 \
-  mariadb:latest
+# Keluar
+EXIT;
 ```
 
 ---
 
-## 2. Setup Project di VM Server
+## 3. Konfigurasi Environment
 
-### Transfer project ke VPS
-
-```bash
-# Copy project ke VM server
-scp -r ./inventory-server user@192.168.x.x:/var/www/inventory
-# Atau clone dari Git repo jika ada
-```
-
-### Install dependencies
+Buat file `.env` di folder project:
 
 ```bash
-cd /var/www/inventory
-npm install
+nano .env
 ```
 
-### Setup environment variables
-
-Buat file `.env`:
+Isi dengan:
 
 ```env
-DATABASE_URL="mysql://inventory_user:inventory123@localhost:3306/inventory_db"
+DATABASE_URL="mysql://user-disesuaikan:password@ipaddress:3306/inventory_db"
 AUTH_SECRET="inventory-system-secret-key-2024-change-this"
-NEXTAUTH_URL="http://192.168.x.x:3000"
+NEXTAUTH_URL="http://localhost:3000"
 ```
 
-Generate AUTH_SECRET:
+> **Catatan:** Ubah `password` sesuai dengan password root MariaDB kamu.
+
+Generate AUTH_SECRET secara otomatis:
 
 ```bash
 openssl rand -base64 32
 ```
 
-### Generate Prisma Client
+---
+
+## 4. Install Dependencies & Setup Database
 
 ```bash
+# Install semua package
+npm install
+
+# Generate Prisma Client
 npm run db:generate
-```
 
-### Push schema ke database
-
-```bash
+# Push schema ke database
 npm run db:push
-```
 
-### Jalankan seeder (buat admin & sample data)
-
-```bash
+# Jalankan seeder (membuat admin & data contoh)
 npm run db:seed
 ```
 
-Default credentials setelah seeder:
+**Login default setelah seeder:**
 - **Email:** `admin@inventory.local`
 - **Password:** `admin123`
 
 ---
 
-## 3. Build Production
+## 5. Build Production
 
 ```bash
 npm run build
@@ -118,9 +111,11 @@ npm run build
 
 ---
 
-## 4. Setup PM2
+## 6. Setup PM2 (Process Manager)
 
-### Install PM2 globally
+PM2 memastikan aplikasi tetap jalan di background dan auto-start saat server reboot.
+
+### Install PM2
 
 ```bash
 npm install -g pm2
@@ -132,14 +127,16 @@ npm install -g pm2
 nano ecosystem.config.js
 ```
 
+Isi dengan:
+
 ```js
 module.exports = {
   apps: [
     {
       name: "inventory",
-      script: "node_modules/next/dist/bin/next",
-      args: "start -p 3000",
-      cwd: "/var/www/inventory",
+      script: "npm",
+      args: "run start",
+      cwd: "/home/nama-root/inventory-server",
       instances: 1,
       autorestart: true,
       watch: false,
@@ -153,83 +150,138 @@ module.exports = {
 };
 ```
 
-### Start aplikasi
+> **Catatan:** Gunakan `npm run start` invece `node_modules/next/dist/bin/next start` agar environment variables dan CSS ter-load dengan benar. Ubah `cwd` sesuai dengan lokasi folder project kamu.
+
+### Jalankan aplikasi
 
 ```bash
 pm2 start ecosystem.config.js
 pm2 save
-pm2 startup   # auto-start saat VPS reboot
+pm2 startup   # auto-start saat server reboot
 ```
 
-### Useful PM2 commands
+### Perintah PM2 yang berguna
 
 ```bash
-pm2 status           # lihat status
-pm2 logs inventory   # lihat log
-pm2 restart inventory # restart
-pm2 stop inventory   # stop
+pm2 status           # lihat status aplikasi
+pm2 logs inventory   # lihat log aplikasi
+pm2 restart inventory # restart aplikasi
+pm2 stop inventory   # stop aplikasi
 ```
 
 ---
 
-## 5. Setup Nginx (Reverse Proxy)
+## 7. Setup Apache2 (Reverse Proxy)
+
+Apache2 akan meneruskan request dari port 80 ke aplikasi Next.js di port 3000.
+
+### Aktifkan module yang diperlukan
 
 ```bash
-nano /etc/nginx/sites-available/inventory
+sudo a2enmod proxy
+sudo a2enmod proxy_http
+sudo a2enmod rewrite
 ```
 
-```nginx
-server {
-    listen 80;
-    server_name 192.168.x.x;
-
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
+### Buat file konfigurasi
 
 ```bash
-# Aktifkan site
-ln -s /etc/nginx/sites-available/inventory /etc/nginx/sites-enabled/
+sudo nano /etc/apache2/sites-available/inventory.conf
+```
 
-# Hapus default site (optional)
-rm /etc/nginx/sites-enabled/default
+Isi dengan:
 
-# Test config
-nginx -t
+```apache
+<VirtualHost *:80>
+    ServerName localhost
 
-# Reload nginx
-systemctl reload nginx
+    ProxyPreserveHost On
+    ProxyPass / http://127.0.0.1:3000/
+    ProxyPassReverse / http://127.0.0.1:3000/
+
+    <Proxy *>
+        Order deny,allow
+        Allow from all
+    </Proxy>
+</VirtualHost>
+```
+
+### Aktifkan konfigurasi
+
+```bash
+# Nonaktifkan default site (optional)
+sudo a2dissite 000-default.conf
+
+# Aktifkan konfigurasi inventory
+sudo a2ensite inventory.conf
+
+# Test konfigurasi
+sudo apache2ctl configtest
+
+# Restart Apache2
+sudo systemctl restart apache2
 ```
 
 ---
 
-## 6. Akses dari VM Client
+## 8. Akses Aplikasi
 
-Dari VM client, buka browser dan akses:
+Buka browser dan akses:
 
 ```
-http://192.168.x.x:3000
+http://localhost
 ```
 
-Ganti `192.168.x.x` dengan IP address VM server.
+Atau jika dari komputer lain:
 
-Jika tidak bisa diakses, cek firewall:
+```
+http://192.168.x.x
+```
 
+Ganti `192.168.x.x` dengan IP address server.
+
+**Login:**
+- **Email:** `admin@inventory.local`
+- **Password:** `admin123`
+
+---
+
+## Troubleshooting
+
+### Error: pool timeout / Access denied
+Pastikan `DATABASE_URL` di file `.env` sudah benar dengan password root MariaDB kamu.
+
+### Error: Prisma Client not found
+Jalankan ulang:
 ```bash
-# Di VM Server
-sudo ufw allow 3000
+npm run db:generate
+```
+
+### Apache2 502 Bad Gateway
+Pastikan PM2 sudah running:
+```bash
+pm2 status
+curl http://127.0.0.1:3000
+```
+
+### PM2 tidak auto-start saat reboot
+```bash
+pm2 startup
+pm2 save
+```
+
+### Aplikasi tidak bisa diakses
+Cek firewall:
+```bash
 sudo ufw allow 80
-sudo ufw allow 3306  # hanya jika client perlu akses DB langsung
+sudo ufw allow 3000
+```
+
+### Cek IP Address Server
+```bash
+ip addr show | grep inet
+# atau
+hostname -I
 ```
 
 ---
@@ -237,16 +289,21 @@ sudo ufw allow 3306  # hanya jika client perlu akses DB langsung
 ## Available Scripts
 
 ```bash
-npm run dev          # Development server
-npm run build        # Production build
-npm run start        # Start production server
-npm run lint         # ESLint
+# Development
+npm run dev          # Jalankan development server
+
+# Production
+npm run build        # Build untuk production
+npm run start        # Jalankan server production
 
 # Database
 npm run db:generate  # Generate Prisma Client
-npm run db:push      # Push schema to database
-npm run db:seed      # Run database seeder
+npm run db:push      # Push schema ke database
+npm run db:seed      # Jalankan seeder
 npm run db:studio    # Buka Prisma Studio
+
+# Lainnya
+npm run lint         # ESLint
 ```
 
 ---
@@ -257,68 +314,18 @@ npm run db:studio    # Buka Prisma Studio
 .
 ├── app/                    # Next.js App Router pages
 │   ├── api/               # API routes (auth, items)
-│   ├── dashboard/         # Protected dashboard pages
-│   └── login/             # Login page
+│   ├── dashboard/         # Halaman dashboard (terproteksi)
+│   └── login/             # Halaman login
 ├── app/actions/           # Server Actions (CRUD)
 ├── app/generated/prisma/  # Generated Prisma Client
 ├── lib/
 │   └── db.ts              # Prisma client singleton
 ├── prisma/
-│   ├── schema.prisma      # Database schema
-│   └── seed.ts            # Seeder script
-├── auth.ts                # NextAuth configuration
-└── proxy.ts               # Middleware (auth protection)
+│   ├── schema.prisma      # Schema database
+│   └── seed.ts            # Script seeder
+├── auth.ts                # Konfigurasi NextAuth
+└── proxy.ts               # Middleware (proteksi auth)
 ```
-
----
-
-## API Endpoints
-
-| Method | Endpoint                      | Description          |
-|--------|-------------------------------|----------------------|
-| GET    | `/api/items`                  | List all items       |
-| POST   | `/api/items`                  | Create new item      |
-| GET    | `/api/items/[id]`             | Get single item      |
-| PUT    | `/api/items/[id]`             | Update item          |
-| DELETE | `/api/items/[id]`             | Delete item          |
-| POST   | `/api/auth/[...nextauth]`     | NextAuth handlers    |
-
----
-
-## Troubleshooting
-
-### Error: pool timeout / Access denied
-Pastikan `DATABASE_URL` di `.env` sesuai dengan user dan password MariaDB yang sudah dibuat.
-
-### Error: Prisma Client not found
-Jalankan `npm run db:generate` untuk meregenerate Prisma Client.
-
-### PM2 tidak auto-start saat reboot
-```bash
-pm2 startup   # lalu ikuti instruksi yang muncul
-pm2 save
-```
-
-### Nginx 502 Bad Gateway
-Pastikan PM2 sudah running dan aplikasi listen di port yang benar:
-```bash
-pm2 status
-curl http://127.0.0.1:3000
-```
-
-### VM Client tidak bisa akses server
-- Pastikan firewall server mengizinkan port 3000 dan 80
-- Pastikan VM client dan server ada di jaringan yang sama
-- Cek IP address server: `ip addr show` atau `hostname -I`
-
-### Cek IP Address Server
-```bash
-ip addr show | grep inet
-# atau
-hostname -I
-```
-
-Akan keluar IP seperti `192.168.x.x` — gunakan IP ini di VM client.
 
 ---
 
@@ -326,6 +333,6 @@ Akan keluar IP seperti `192.168.x.x` — gunakan IP ini di VM client.
 
 Karena ini menggunakan VM tanpa domain:
 - Tidak perlu setup SSL (Certbot tidak diperlukan)
-- `NEXTAUTH_URL` gunakan IP address, bukan domain
+- `NEXTAUTH_URL` gunakan IP address atau `localhost`
 - Pastikan semua VM terhubung di jaringan yang sama (NAT atau Bridged Adapter)
-- Untuk demo, credentials default sudah cukup: `admin@inventory.local` / `admin123`
+- Untuk demo, gunakan credentials default: `admin@inventory.local` / `admin123`
