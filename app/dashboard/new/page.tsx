@@ -8,11 +8,17 @@ export default function NewItemPage() {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [qtyDisplay, setQtyDisplay] = useState("")
+  const [priceDisplay, setPriceDisplay] = useState("")
+
+  function formatDots(v: string) {
+    return v.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+  }
 
   async function handleSubmit(formData: FormData) {
     const name = formData.get("name") as string
-    const qty = formData.get("qty") as string
-    const price = formData.get("price") as string
+    const qty = qtyDisplay.replace(/\./g, "")
+    const price = priceDisplay.replace(/\./g, "")
 
     if (!name || !qty || !price) {
       setError("Semua field wajib diisi")
@@ -84,13 +90,15 @@ export default function NewItemPage() {
                 <span className="field-hint">(unit)</span>
               </label>
               <input
-                type="number"
+                type="text"
                 id="qty"
                 name="qty"
                 required
-                min="0"
+                inputMode="numeric"
                 className="input mono"
                 placeholder="0"
+                value={qtyDisplay}
+                onInput={e => setQtyDisplay(formatDots(e.currentTarget.value))}
               />
             </div>
 
@@ -100,14 +108,15 @@ export default function NewItemPage() {
                 <span className="field-hint">(Rp)</span>
               </label>
               <input
-                type="number"
+                type="text"
                 id="price"
                 name="price"
                 required
-                min="0"
-                step="1"
+                inputMode="numeric"
                 className="input mono"
                 placeholder="0"
+                value={priceDisplay}
+                onInput={e => setPriceDisplay(formatDots(e.currentTarget.value))}
               />
             </div>
 

@@ -211,6 +211,11 @@ Isi dengan:
 
 ```bash
 # Nonaktifkan default site
+# WAJIB: 000-default.conf memiliki ServerName yang sama (www.web-jarkom.lab)
+# sehingga di-load duluan dan menang atas jaringan-komputer.conf.
+# Apache memakai VirtualHost pertama yang cocok — konflik ini menyebabkan
+# request ke www.web-jarkom.lab tetap serve /var/www/html, bukan Next.js.
+# kamu bisa cek langsung dari "sudo apache2ctl -S" nanti terlihat bahwa www.web-jarkom.lab ada 3
 sudo a2dissite 000-default.conf
 
 # Aktifkan konfigurasi jaringan-komputer
@@ -222,6 +227,8 @@ sudo apache2ctl configtest
 # Restart Apache2
 sudo systemctl restart apache2
 ```
+
+> **Catatan:** Jika di kemudian hari ingin menambah aplikasi/domain baru, **tidak perlu** disable `jaringan-komputer.conf`. Cukup buat file `.conf` baru dengan `ServerName` berbeda dan `a2ensite` — Apache akan routing berdasarkan domain secara otomatis.
 
 ---
 
