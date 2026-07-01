@@ -210,11 +210,11 @@ Isi dengan:
 ### Aktifkan konfigurasi
 
 ```bash
-# Nonaktifkan default site (optional)
+# Nonaktifkan default site
 sudo a2dissite 000-default.conf
 
-# Aktifkan konfigurasi inventory
-sudo a2ensite inventory.conf
+# Aktifkan konfigurasi jaringan-komputer
+sudo a2ensite jaringan-komputer.conf
 
 # Test konfigurasi
 sudo apache2ctl configtest
@@ -229,8 +229,23 @@ sudo systemctl restart apache2
 
 Agar domain `www.web-jarkom.lab` bisa diakses dari Windows client, tambahkan DNS static di MikroTik yang mengarahkan domain ke IP server.
 
-### Via WinBox
+### Aktifkan Allow Remote Requests
 
+MikroTik by default tidak melayani DNS query dari client. Wajib diaktifkan terlebih dahulu:
+
+**Via Terminal MikroTik:**
+```
+/ip dns set allow-remote-requests=yes
+```
+
+**Via WinBox:**
+```
+IP → DNS → centang "Allow Remote Requests" → OK
+```
+
+### Tambah DNS Static
+
+**Via WinBox:**
 ```
 IP → DNS → Static → Add (klik +)
   Name:    www.web-jarkom.lab
@@ -238,8 +253,7 @@ IP → DNS → Static → Add (klik +)
   → OK
 ```
 
-### Via Terminal MikroTik
-
+**Via Terminal MikroTik:**
 ```
 /ip dns static add name=www.web-jarkom.lab address=192.168.0.100
 ```
