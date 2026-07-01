@@ -134,10 +134,10 @@ Isi dengan:
 module.exports = {
   apps: [
     {
-      name: "inventory",
-      script: "npm",
-      args: "run start",
-      cwd: "/home/nama-root/inventory-server",
+      name: "nama-project",
+      script: "node_modules/next/dist/bin/next",
+      args: "start",
+      cwd: "/home/nama-root/nama-project",
       instances: 1,
       autorestart: true,
       watch: false,
@@ -151,7 +151,9 @@ module.exports = {
 };
 ```
 
-> **Catatan:** Gunakan `npm run start` invece `node_modules/next/dist/bin/next start` agar environment variables dan CSS ter-load dengan benar. Ubah `cwd` sesuai dengan lokasi folder project kamu.
+> **Catatan:**
+> - Ubah `name` dan `cwd` sesuai nama folder project kamu (gunakan `pwd` untuk cek path lengkap).
+> - Gunakan `script: "node_modules/next/dist/bin/next"` — bukan `npm`. PM2 tidak menjalankan shell sehingga `npm run start` sering gagal di environment PM2.
 
 ### Jalankan aplikasi
 
@@ -164,10 +166,10 @@ pm2 startup   # auto-start saat server reboot
 ### Perintah PM2 yang berguna
 
 ```bash
-pm2 status           # lihat status aplikasi
-pm2 logs inventory   # lihat log aplikasi
-pm2 restart inventory # restart aplikasi
-pm2 stop inventory   # stop aplikasi
+pm2 status                  # lihat status aplikasi
+pm2 logs nama-project       # lihat log aplikasi
+pm2 restart nama-project    # restart aplikasi
+pm2 stop nama-project       # stop aplikasi
 ```
 
 ---
