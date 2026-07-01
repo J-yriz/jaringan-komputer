@@ -68,7 +68,8 @@ Isi dengan:
 ```env
 DATABASE_URL="mysql://user-disesuaikan:password@ipaddress:3306/inventory_db"
 AUTH_SECRET="inventory-system-secret-key-2024-change-this"
-NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_URL="http://192.168.0.100:3000"
+AUTH_TRUST_HOST=true
 ```
 
 > **Catatan:** Ubah `password` sesuai dengan password root MariaDB kamu.
@@ -173,7 +174,7 @@ pm2 stop inventory   # stop aplikasi
 
 ## 7. Setup Apache2 (Reverse Proxy)
 
-Apache2 akan meneruskan request dari port 80 ke aplikasi Next.js di port 3000.
+Apache2 digunakan sebagai reverse proxy agar user dapat mengakses aplikasi melalui domain static `www.web-jarkom.lab` yang diarahkan ke server.
 
 ### Aktifkan module yang diperlukan
 
@@ -193,7 +194,7 @@ Isi dengan:
 
 ```apache
 <VirtualHost *:80>
-    ServerName localhost
+    ServerName www.web-jarkom.lab
 
     ProxyPreserveHost On
     ProxyPass / http://127.0.0.1:3000/
@@ -229,16 +230,8 @@ sudo systemctl restart apache2
 Buka browser dan akses:
 
 ```
-http://localhost
+http://www.web-jarkom.lab
 ```
-
-Atau jika dari komputer lain:
-
-```
-http://192.168.x.x
-```
-
-Ganti `192.168.x.x` dengan IP address server.
 
 **Login:**
 - **Email:** `admin@inventory.local`
@@ -247,6 +240,16 @@ Ganti `192.168.x.x` dengan IP address server.
 ---
 
 ## Troubleshooting
+
+### Error: UntrustedHost
+Auth.js v5 memerlukan host dipercaya. Pastikan `.env` mengandung:
+```env
+AUTH_TRUST_HOST=true
+```
+ Lalu restart PM2:
+```bash
+pm2 restart inventory
+```
 
 ### Error: pool timeout / Access denied
 Pastikan `DATABASE_URL` di file `.env` sudah benar dengan password root MariaDB kamu.
@@ -271,11 +274,16 @@ pm2 save
 ```
 
 ### Aplikasi tidak bisa diakses
-Cek firewall:
-```bash
-sudo ufw allow 80
-sudo ufw allow 3000
-```
+1. Pastikan PM2 sudah running:
+   ```bash
+   pm2 status
+   curl http://127.0.0.1:3000
+   ```
+2. Pastikan domain `www.web-jarkom.lab` resolve ke IP server (cek `/etc/hosts` atau DNS server)
+3. Cek firewall:
+   ```bash
+   sudo ufw allow 80
+   ```
 
 ### Cek IP Address Server
 ```bash
