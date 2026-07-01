@@ -29,9 +29,9 @@ Clone project ke folder yang diinginkan. Disarankan di root folder untuk kemudah
 # Cek lokasi sekarang
 pwd
 
-# Clone project (rekomendasi: /home/nama-root/inventory-server atau ~/nama-root/inventory-server)
+# Clone project (rekomendasi: /home/nama-root/jaringan-komputer atau ~/nama-root/jaringan-komputer)
 git clone <repository-url>
-cd /home/nama-root/inventory-server
+cd /home/nama-root/jaringan-komputer
 ```
 
 > **Tips:** Gunakan `pwd` untuk memastikan kamu berada di folder yang benar.
@@ -66,13 +66,13 @@ nano .env
 Isi dengan:
 
 ```env
-DATABASE_URL="mysql://user-disesuaikan:password@ipaddress:3306/inventory_db"
+DATABASE_URL="mysql://user-disesuaikan:password@127.0.0.1:3306/inventory_db"
 AUTH_SECRET="inventory-system-secret-key-2024-change-this"
-NEXTAUTH_URL="http://192.168.0.100:3000"
+NEXTAUTH_URL="http://www.web-jarkom.lab"
 AUTH_TRUST_HOST=true
 ```
 
-> **Catatan:** Ubah `password` sesuai dengan password root MariaDB kamu.
+> **Catatan:** Ubah `password` sesuai dengan password root MariaDB kamu. `NEXTAUTH_URL` menggunakan domain yang sudah dikonfigurasi di Apache dan MikroTik DNS.
 
 Generate AUTH_SECRET secara otomatis:
 
@@ -181,15 +181,13 @@ Apache2 digunakan sebagai reverse proxy agar user dapat mengakses aplikasi melal
 ### Aktifkan module yang diperlukan
 
 ```bash
-sudo a2enmod proxy
-sudo a2enmod proxy_http
-sudo a2enmod rewrite
+sudo a2enmod proxy proxy_http rewrite
 ```
 
 ### Buat file konfigurasi
 
 ```bash
-sudo nano /etc/apache2/sites-available/inventory.conf
+sudo nano /etc/apache2/sites-available/jaringan-komputer.conf
 ```
 
 Isi dengan:
@@ -227,7 +225,38 @@ sudo systemctl restart apache2
 
 ---
 
-## 8. Akses Aplikasi
+## 8. Setup DNS MikroTik
+
+Agar domain `www.web-jarkom.lab` bisa diakses dari Windows client, tambahkan DNS static di MikroTik yang mengarahkan domain ke IP server.
+
+### Via WinBox
+
+```
+IP → DNS → Static → Add (klik +)
+  Name:    www.web-jarkom.lab
+  Address: 192.168.0.100
+  → OK
+```
+
+### Via Terminal MikroTik
+
+```
+/ip dns static add name=www.web-jarkom.lab address=192.168.0.100
+```
+
+### Verifikasi dari Windows Client
+
+Pastikan Windows client menggunakan MikroTik (`192.168.0.254`) sebagai DNS server, lalu:
+
+```
+ping www.web-jarkom.lab
+```
+
+**Expected:** reply dari `192.168.0.100`
+
+---
+
+## 9. Akses Aplikasi
 
 Buka browser dan akses:
 
@@ -341,8 +370,9 @@ npm run lint         # ESLint
 
 ## Catatan untuk Tugas Praktikum
 
-Karena ini menggunakan VM tanpa domain:
+Karena ini menggunakan VM dengan Internal Network dan MikroTik sebagai gateway:
 - Tidak perlu setup SSL (Certbot tidak diperlukan)
-- `NEXTAUTH_URL` gunakan IP address atau `localhost`
-- Pastikan semua VM terhubung di jaringan yang sama (NAT atau Bridged Adapter)
+- `NEXTAUTH_URL` gunakan domain `http://www.web-jarkom.lab` (bukan IP langsung)
+- Pastikan semua VM terhubung di jaringan Internal Network yang sama (`intnet`)
+- DNS domain `www.web-jarkom.lab` dikonfigurasi di MikroTik DNS Static, bukan di `/etc/hosts`
 - Untuk demo, gunakan credentials default: `admin@inventory.local` / `admin123`
