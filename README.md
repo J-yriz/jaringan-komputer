@@ -397,3 +397,6 @@ Karena ini menggunakan VM dengan Internal Network dan MikroTik sebagai gateway:
 - Pastikan semua VM terhubung di jaringan Internal Network yang sama (`intnet`)
 - DNS domain `www.web-jarkom.lab` dikonfigurasi di MikroTik DNS Static, bukan di `/etc/hosts`
 - Untuk demo, gunakan credentials default: `admin@inventory.local` / `admin123`
+
+
+# Sekian Terimakasih 
